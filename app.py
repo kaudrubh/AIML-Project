@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import joblib
 
 # Load pre-trained model and preprocessing tools
@@ -12,13 +13,21 @@ le_prediction = joblib.load('prediction_label_encoder.pkl')
 st.title("Cyber Threat Prediction")
 st.write("Upload your data or fill in the fields to predict cyber threat categories.")
 
-# Feature input
+# Sidebar for input features
 st.sidebar.header("Input Features")
+
+# Use the label encoders' classes to populate dropdown options
+protocol_options = label_encoders["Protcol"].classes_
+flag_options = label_encoders["Flag"].classes_
+family_options = label_encoders["Family"].classes_
+threat_options = label_encoders["Threats"].classes_
+
+# Input fields
 input_data = {
     "Time": st.sidebar.number_input("Time", value=10),
-    "Protcol": st.sidebar.selectbox("Protocol", ["TCP", "UDP"]),
-    "Flag": st.sidebar.selectbox("Flag", ["A", "B", "C"]),
-    "Family": st.sidebar.selectbox("Family", ["WannaCry", "Petya", "NotPetya"]),
+    "Protcol": st.sidebar.selectbox("Protocol", protocol_options),
+    "Flag": st.sidebar.selectbox("Flag", flag_options),
+    "Family": st.sidebar.selectbox("Family", family_options),
     "Clusters": st.sidebar.slider("Clusters", 1, 12, value=1),
     "SeddAddress": st.sidebar.text_input("Sender Address", value="1DA11mPS"),
     "ExpAddress": st.sidebar.text_input("Exp Address", value="1BonuSr7"),
@@ -26,7 +35,7 @@ input_data = {
     "USD": st.sidebar.number_input("USD", value=500),
     "Netflow_Bytes": st.sidebar.number_input("Netflow Bytes", value=500),
     "IPaddress": st.sidebar.text_input("IP Address", value="192.168.1.1"),
-    "Threats": st.sidebar.selectbox("Threats", ["Bonet", "DDoS", "Phishing"]),
+    "Threats": st.sidebar.selectbox("Threats", threat_options),
     "Port": st.sidebar.slider("Port", 5061, 5068, value=5061)
 }
 
@@ -34,15 +43,24 @@ input_data = {
 input_df = pd.DataFrame([input_data])
 
 # Preprocess input data
-for col, le in label_encoders.items():
-    if col in input_df:
-        input_df[col] = le.transform(input_df[col])
-        
-# Standardize numerical columns
-numerical_columns = input_df.select_dtypes(include="number").columns
-input_df[numerical_columns] = scaler.transform(input_df[numerical_columns])
+try:
+    # Encode categorical features
+    for col, le in label_encoders.items():
+        if col in input_df:
+            if input_df[col][0] not in le.classes_:
+                st.error(f"Invalid value for {col}: {input_df[col][0]}. Please provide a valid value.")
+                st.stop()  # Stop execution if there's an invalid input
+            input_df[col] = le.transform(input_df[col])
 
-# Predict button
-if st.button("Predict"):
-    prediction = rf_model.predict(input_df)
-    st.success(f"The predicted threat is: {le_prediction.inverse_transform(prediction)[0]}")
+    # Standardize numerical columns
+    numerical_columns = input_df.select_dtypes(include="number").columns
+    input_df[numerical_columns] = scaler.transform(input_df[numerical_columns])
+
+    # Predict button
+    if st.button("Predict"):
+        prediction = rf_model.predict(input_df)
+        predicted_class = le_prediction.inverse_transform(prediction)[0]
+        st.success(f"The predicted threat is: {predicted_class}")
+
+except Exception as e:
+    st.error(f"An unexpected error occurred: {e}")
