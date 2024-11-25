@@ -1,48 +1,44 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import classification_report
 import joblib
 
-# Load the dataset
-dataset = pd.read_csv('D:/OneDrive/Desktop/Desktop/aiml_mini/aiml_mini/Dataset (1).csv')  # Replace with your dataset filename
+# Step 1: Load the dataset
+dataset = pd.read_csv('Dataset.csv')
 
-# Check and clean the dataset
-print("Dataset Overview:")
-print(dataset.info())
-print("Unique values in 'Prediction':", dataset['Prediction'].unique())
-
-# Preprocess the dataset
+# Encode categorical columns
+categorical_columns = ['Protcol', 'Flag', 'Family', 'SeddAddress', 'ExpAddress', 'IPaddress', 'Threats']
 label_encoders = {}
-for col in dataset.select_dtypes(include='object').columns:
-    le = LabelEncoder()
-    dataset[col] = le.fit_transform(dataset[col])
-    label_encoders[col] = le
 
-# Save LabelEncoder for the target column separately
-if 'Prediction' in label_encoders:
-    le_prediction = label_encoders.pop('Prediction')  # Remove from dictionary and save separately
-    joblib.dump(le_prediction, 'prediction_label_encoder.pkl')
-else:
-    raise ValueError("The 'Prediction' column is missing or was not encoded correctly.")
+for col in categorical_columns:
+    encoder = LabelEncoder()
+    dataset[col] = encoder.fit_transform(dataset[col])
+    label_encoders[col] = encoder
 
-# Standardize numerical features
-scaler = StandardScaler()
-numerical_columns = dataset.select_dtypes(include='number').columns.drop('Prediction')
-dataset[numerical_columns] = scaler.fit_transform(dataset[numerical_columns])
-
-# Split data into features (X) and target (y)
-X = dataset.drop('Prediction', axis=1)
+# Separate features (X) and target (y)
+X = dataset.drop(columns=['Prediction'])
 y = dataset['Prediction']
+
+# Encode target labels
+target_encoder = LabelEncoder()
+y = target_encoder.fit_transform(y)
+
+# Step 2: Train/test split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Train a Random Forest model
-rf_model = RandomForestClassifier(random_state=42)
-rf_model.fit(X_train, y_train)
+# Step 3: Train the Random Forest model
+random_forest_model = RandomForestClassifier(n_estimators=100, random_state=42)
+random_forest_model.fit(X_train, y_train)
 
-# Save the model and preprocessing objects
-joblib.dump(rf_model, 'rf_model.pkl')
+# Evaluate the model
+y_pred = random_forest_model.predict(X_test)
+print("Classification Report:")
+print(classification_report(y_test, y_pred, target_names=target_encoder.classes_))
+
+# Save the model and encoders
+joblib.dump(random_forest_model, 'random_forest_model.pkl')
 joblib.dump(label_encoders, 'label_encoders.pkl')
-joblib.dump(scaler, 'scaler.pkl')
-
-print("Model and preprocessing artifacts saved successfully!")
+joblib.dump(target_encoder, 'target_encoder.pkl')
+print("Model and encoders saved successfully.")
