@@ -44,9 +44,9 @@ input_df = pd.DataFrame([input_data])
 
 # Preprocess input data
 try:
-    # Encode categorical features
+    # Encode categorical features, excluding columns like 'IPaddress'
     for col, le in label_encoders.items():
-        if col in input_df:
+        if col in input_df and col != "IPaddress":  # Exclude IPaddress from encoding
             if input_df[col][0] not in le.classes_:
                 st.error(f"Invalid value for {col}: {input_df[col][0]}. Please provide a valid value.")
                 st.stop()  # Stop execution if there's an invalid input
