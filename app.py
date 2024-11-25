@@ -34,7 +34,7 @@ input_data = {
     "BTC": st.sidebar.number_input("BTC", value=1),
     "USD": st.sidebar.number_input("USD", value=500),
     "Netflow_Bytes": st.sidebar.number_input("Netflow Bytes", value=500),
-    "IPaddress": st.sidebar.text_input("IP Address", value="192.168.1.1"),
+    "IPaddress": st.sidebar.text_input("IP Address", value="192.168.1.1"),  # Pass unchanged
     "Threats": st.sidebar.selectbox("Threats", threat_options),
     "Port": st.sidebar.slider("Port", 5061, 5068, value=5061)
 }
@@ -55,6 +55,14 @@ try:
     # Standardize numerical columns
     numerical_columns = input_df.select_dtypes(include="number").columns
     input_df[numerical_columns] = scaler.transform(input_df[numerical_columns])
+
+    # Ensure all required features are present
+    expected_features = rf_model.feature_names_in_  # Ensure the features match the training phase
+    missing_features = set(expected_features) - set(input_df.columns)
+    if missing_features:
+        for feature in missing_features:
+            input_df[feature] = 0  # Add missing features with default values
+    input_df = input_df[expected_features]  # Reorder columns to match the model input
 
     # Predict button
     if st.button("Predict"):
